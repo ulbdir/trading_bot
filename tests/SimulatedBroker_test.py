@@ -9,11 +9,11 @@ class Test_SimulatedBroker(unittest.TestCase):
         return super().setUp()
     
     def test_createOrder(self):
-        o = self.broker.createOrder(1)
+        o = self.broker.createOrder("BTC/USD", 1)
         self.assertIn(o, self.broker.open_orders)
         self.assertTrue(len(self.broker.filled_orders) == 0)
 
-        o2 = self.broker.createOrder(1)
+        o2 = self.broker.createOrder("BTC/USD", 1)
         self.assertNotEqual(o, o2)
         self.assertNotEqual(o.id, o2.id)
         self.assertEqual(o, o.id)
@@ -21,7 +21,7 @@ class Test_SimulatedBroker(unittest.TestCase):
 
     def test_cancelOrder(self):
         # create order and cancel it
-        o = self.broker.createOrder(1)
+        o = self.broker.createOrder("BTC/USD", 1)
         self.assertIn(o, self.broker.open_orders)
 
         self.broker.cancelOrder(o.id)
@@ -32,8 +32,8 @@ class Test_SimulatedBroker(unittest.TestCase):
 
     def test_onPriceChanged_MarketOrder(self):
         # market buy
-        o_buy = self.broker.createOrder(1)
-        o_sell = self.broker.createOrder(1, Order.Side.SHORT)
+        o_buy = self.broker.createOrder("BTC/USD", 1)
+        o_sell = self.broker.createOrder("BTC/USD", 1, Order.Side.SELL)
 
         self.assertIn(o_buy, self.broker.open_orders)
         self.assertIn(o_sell, self.broker.open_orders)
@@ -47,7 +47,7 @@ class Test_SimulatedBroker(unittest.TestCase):
         self.assertIn(o_sell, self.broker.filled_orders)
 
     def test_onPriceChanged_LimitOrder_Long(self):
-        o = self.broker.createOrder(1, Order.Side.LONG, Order.Type.LIMIT, 100)
+        o = self.broker.createOrder("BTC/USD", 1, Order.Side.BUY, Order.Type.LIMIT, 100)
         self.assertIn(o, self.broker.open_orders)
 
         # change price, but above limit price -> limit order not executed
@@ -61,7 +61,7 @@ class Test_SimulatedBroker(unittest.TestCase):
         self.assertIn(o, self.broker.filled_orders)
 
     def test_onPriceChanged_LimitOrder_Short(self):
-        o = self.broker.createOrder(1, Order.Side.SHORT, Order.Type.LIMIT, 100)
+        o = self.broker.createOrder("BTC/USD", 1, Order.Side.SELL, Order.Type.LIMIT, 100)
         self.assertIn(o, self.broker.open_orders)
 
         # change price, but below limit price -> limit order not executed
@@ -73,7 +73,3 @@ class Test_SimulatedBroker(unittest.TestCase):
         self.broker.onPriceChanged(150)
         self.assertNotIn(o, self.broker.open_orders)
         self.assertIn(o, self.broker.filled_orders)
-
-
-if __name__ == '__main__':
-    unittest.main()
