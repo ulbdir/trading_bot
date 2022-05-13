@@ -11,7 +11,7 @@ from Strategy import Strategy
 from Wallet import Wallet
 
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
 # The market for the bot
 market = Market("BTC", "USD")
@@ -20,7 +20,7 @@ market = Market("BTC", "USD")
 wallet: Wallet = Wallet()
 wallet.setBalance("USD", 1000)
 
-broker: SimulatedBroker = SimulatedBroker()
+broker: SimulatedBroker = SimulatedBroker(wallet)
 
 exchange = ccxt.ftx()
 price_provider = PriceProvider(exchange)

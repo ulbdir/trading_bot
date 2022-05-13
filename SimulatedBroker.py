@@ -6,13 +6,15 @@ from Order import Order
 from Broker import Broker
 from OrderFill import OrderFill
 from PriceProvider import PriceListener
+from Wallet import Wallet
 
 class SimulatedBroker(Broker, PriceListener):
 
     next_id: int = 1
 
-    def __init__(self) -> None:
+    def __init__(self, wallet: Wallet) -> None:
         super().__init__()
+        self.wallet = wallet
         self.open_orders = []
         self.filled_orders = []
 
@@ -41,11 +43,31 @@ class SimulatedBroker(Broker, PriceListener):
         return fill
 
     def _add_fill(self, order: Order, fill: OrderFill):
+        
+        # modify wallet
+        if order.side == Order.Side.BUY:
+            # buy order increases base currency and decreases quote currency (+BTC -USD)
+            base = self.wallet.getBalance(order.market.base_currency)
+            self.wallet.setBalance(order.market.base_currency, base + fill.qty)
+
+            quote = self.wallet.getBalance(order.market.quote_currency)
+            self.wallet.setBalance(order.market.quote_currency, quote - fill.qty * fill.price)
+        else:
+            # sell order decreases base currency and increases quote currency (-BTC +USD)
+            base = self.wallet.getBalance(order.market.base_currency)
+            self.wallet.setBalance(order.market.base_currency, base - fill.qty)
+
+            quote = self.wallet.getBalance(order.market.quote_currency)
+            self.wallet.setBalance(order.market.quote_currency, quote + fill.qty * fill.price)
+
+        # add fill to order
         order.fills.append(fill)
         if order.is_filled():
             self.filled_orders.append(order)
             logging.info("Order filled: " + str(order))
             self.notifyOrderFilled(order, fill)
+        
+        logging.info(str(self.wallet))
 
     def onPriceChanged(self, pair: Market, price: float):
         remaining_orders = []

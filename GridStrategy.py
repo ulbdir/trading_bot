@@ -36,7 +36,7 @@ class GridStrategy(Strategy, PriceListener):
         while (price >= lower_price):
             self.grid_lines.append(price)
             price -= price_step
-        logging.info("Generated", len(self.grid_lines), "price levels from", self.upper_price,"to",self.lower_price,"every",self.price_step)
+        logging.info("Generated " + str(len(self.grid_lines)) + " price levels from " + str(self.upper_price) + " to " + str(self.lower_price) + " every " + str(self.price_step))
         logging.debug(self.grid_lines)
 
     def num_gridlines_below(self, price: float) -> int:
@@ -102,5 +102,6 @@ class GridStrategy(Strategy, PriceListener):
         pass
 
     def onPriceChanged(self, pair: string, price: float):
-        print(pair, price)
+        #print(pair, price)
+        pass
 

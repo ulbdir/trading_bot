@@ -1,3 +1,4 @@
+import logging
 import string
 
 
@@ -14,3 +15,6 @@ class Wallet:
     
     def setBalance(self, token: string, amount: float) -> None:
         self.tokens[token] = amount
+    
+    def __str__(self) -> str:
+        return "Wallet " + str(self.tokens)
