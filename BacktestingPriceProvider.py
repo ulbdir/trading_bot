@@ -57,6 +57,7 @@ class BacktestingPriceProvider(PriceProvider):
                         self.updatePriceListenersWithBacktestingData(dcandle["high"])
                         self.updatePriceListenersWithBacktestingData(dcandle["low"])
                         self.updatePriceListenersWithBacktestingData(dcandle["close"])
+                    self.current_price = dcandle["close"]
                 else:
                     break
         

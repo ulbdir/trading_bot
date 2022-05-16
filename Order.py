@@ -34,7 +34,8 @@ class Order:
         return math.isclose(self.qty, self.qty_filled())
 
     def __str__(self) -> str:
-        return "[id: " + str(self.id) + ", market: " + str(self.market) + ", qty: " + str(self.qty) + ", side: " + str(self.side) + ", type: " + str(self.type) + ", limit: " + str(self.limit_price) + "]"
+        #return "[id: " + str(self.id) + ", market: " + str(self.market) + ", qty: " + str(self.qty) + ", side: " + str(self.side) + ", type: " + str(self.type) + ", limit: " + str(self.limit_price) + "]"
+        return str.format("[id: {}, market: {}, qty: {:f} ({} {:.2f}), side: {}, type: {}, limit: {}]", self.id, self.market, self.qty, self.market.quote_currency, self.qty*self.limit_price, self.side, self.type, self.limit_price)
 
     def __eq__(self, __o: object) -> bool:
         if isinstance(__o, self.__class__):
