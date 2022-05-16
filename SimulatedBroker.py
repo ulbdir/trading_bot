@@ -36,7 +36,7 @@ class SimulatedBroker(Broker, PriceListener):
             self.open_orders.remove(order_id)
             logging.info("Order canceled: " + str(order_id))
         else:
-            logging.warn("cancelOrder: Order not found: " + str(order_id))
+            logging.warning("cancelOrder: Order not found: " + str(order_id))
     
     def _generate_complete_fill(self, order: Order, price: float) -> OrderFill:
         fill = OrderFill(order.qty, price, 0, datetime.now(timezone.utc))
