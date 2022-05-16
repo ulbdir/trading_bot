@@ -65,12 +65,12 @@ class SimulatedBroker(Broker, PriceListener):
         if order.is_filled():
             self.filled_orders.append(order)
             logging.info("Order filled: " + str(order))
-            self.notifyOrderFilled(order, fill)
         
         logging.info(str(self.wallet))
 
     def onPriceChanged(self, pair: Market, price: float):
         remaining_orders = []
+        notifications = []
         for order in self.open_orders:
             if order.market == pair:
                 if order.type == Order.Type.MARKET:
@@ -84,6 +84,7 @@ class SimulatedBroker(Broker, PriceListener):
                         if price < order.limit_price:
                             fill = self._generate_complete_fill(order, price)
                             self._add_fill(order, fill)
+                            notifications.append([order, fill])
                         else:
                             remaining_orders.append(order)
                     else:
@@ -91,9 +92,24 @@ class SimulatedBroker(Broker, PriceListener):
                         if price > order.limit_price:
                             fill = self._generate_complete_fill(order, price)
                             self._add_fill(order, fill)
+                            notifications.append([order, fill])
                         else:
                             remaining_orders.append(order)
                 else:
                     # unknown order type
                     pass
+        self.open_orders = remaining_orders
+
+        # do notifications
+        for n in notifications:
+            self.notifyOrderFilled(n[0], n[1])
+
+    def cancel_all_orders(self, market: Market):
+        remaining_orders = []
+        for order in self.open_orders:
+            if order.market == market:
+                # cancel this order
+                logging.info("Order canceled: " + str(order))
+            else:
+                remaining_orders.append(order)
         self.open_orders = remaining_orders

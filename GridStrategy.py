@@ -1,6 +1,6 @@
+import logging
 import math
 import string
-import logging
 from Broker import Broker
 from Market import Market
 from Order import Order
@@ -59,6 +59,22 @@ class GridStrategy(Strategy, PriceListener):
     def price_above(self, price) -> float:
         return math.ceil(price / self.price_step) * self.price_step
 
+    def get_grid_index(self, price: float):
+        
+        # find nearest price in terms of price_step
+        nearest_grid_price = round(price / self.price_step) * self.price_step
+        idx = round((nearest_grid_price - self.lower_price) / self.price_step)
+        
+        # since prices are sorted high to low, the idx is actually from the end of the grid and needs to be reverted
+        idx = len(self.grid_lines) - idx - 1
+        
+        # clamp to grid range
+        idx = min(idx, len(self.grid_lines)-1)
+        idx = max(idx, 0)
+
+        return idx
+
+
     def initialiseOrders(self) -> None:
         market_price = self.price_provider.getCurrentPrice(self.pair)
         logging.info("Current market price for " + self.pair.base_currency + " is " + str(market_price))
@@ -99,7 +115,33 @@ class GridStrategy(Strategy, PriceListener):
         self.initialiseOrders()
 
     def onOrderFilled(self, order: Order, fill: OrderFill):
-        pass
+        if (order.type == Order.Type.LIMIT) and (order.market == self.pair):
+            self.broker.cancel_all_orders(self.pair)
+            idx = self.get_grid_index(order.limit_price)
+            if idx >= 0:
+                market_price = order.limit_price
+
+                value_base = self.wallet.getBalance(self.pair.base_currency) * market_price
+                value_quote = self.wallet.getBalance(self.pair.quote_currency)
+
+                size_per_grid = (value_base + value_quote) / len(self.grid_lines)
+                
+                # create buy order one grid level below
+                below_idx = idx + 1
+                if below_idx < len(self.grid_lines):
+                    buy_price = self.grid_lines[below_idx]
+                    buy_qty = size_per_grid / buy_price
+                    self.broker.createOrder(self.pair, buy_qty, Order.Side.BUY, Order.Type.LIMIT, buy_price)
+
+                # create sell order above
+                sell_idx = idx - 1
+                if sell_idx >= 0:
+                    sell_price = self.grid_lines[sell_idx]
+                    # sell the qty that was bought on current level
+                    sell_qty = size_per_grid / self.grid_lines[idx]
+                    self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
+        else:
+            logging.info("Order ignored: " + str(order))
 
     def onPriceChanged(self, pair: string, price: float):
         #print(pair, price)

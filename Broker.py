@@ -34,3 +34,6 @@ class Broker(ABC):
     def cancelOrder(self, order_id: int):
         pass
     
+    @abstractmethod
+    def cancel_all_orders(self, market: Market):
+        pass
