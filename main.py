@@ -1,6 +1,7 @@
 import logging
 import ccxt
-import time
+import finplot
+
 from datetime import datetime, timezone
 from BacktestingPriceProvider import BacktestingPriceProvider
 from GridStrategy import GridStrategy
@@ -25,7 +26,7 @@ broker: SimulatedBroker = SimulatedBroker(wallet)
 
 exchange = ccxt.ftx()
 #price_provider = PriceProvider(exchange)
-price_provider = BacktestingPriceProvider(exchange, market, "1h", datetime(2022, 1, 1, tzinfo=timezone.utc), datetime(2022, 1, 31, tzinfo=timezone.utc))
+price_provider = BacktestingPriceProvider(exchange, market, "1h", datetime(2022, 1, 1, tzinfo=timezone.utc), datetime(2022, 4, 30, tzinfo=timezone.utc))
 
 strategy: Strategy = GridStrategy(market, wallet, broker, price_provider)
 strategy.upper_price = 50000
@@ -42,18 +43,7 @@ price_provider.run()
 
 logging.info(str.format("Wallet value: {} {}", wallet.getBalance(market.quote_currency) + wallet.getBalance(market.base_currency) * price_provider.getCurrentPrice(market), market.quote_currency))
 
-# while True:
-#     price_provider.updatePriceListeners()
-#     time.sleep(5)
-
-# if exchange.has['fetchOHLCV']:
-#     while True:
-#         symbol = "BTC/USD"
-#         ticker = exchange.fetch_ticker(symbol)
-#         print("Ticker", ticker["last"])
-
-#         candles = exchange.fetch_ohlcv (symbol, '1h', limit=5)
-#         for candle in candles:
-#             print(datetime.now(),"   ->   ", datetime.utcfromtimestamp(candle[0] / 1000).strftime('%Y-%m-%d %H:%M:%S'), candle)
-#         print()
-#         time.sleep(5)
+# open a window to visualise the simulation result
+# TODO add grid lines and trades to candlestick chart, add portfolio/time value as additional graph
+finplot.candlestick_ochl(price_provider.historic_candles[['open', 'close', 'high', 'low']])
+finplot.show()
