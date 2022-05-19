@@ -26,12 +26,9 @@ broker: SimulatedBroker = SimulatedBroker(wallet)
 
 exchange = ccxt.ftx()
 #price_provider = PriceProvider(exchange)
-price_provider = BacktestingPriceProvider(exchange, market, "1m", datetime(2022, 1, 1, tzinfo=timezone.utc), datetime(2022, 5, 18, tzinfo=timezone.utc))
+price_provider = BacktestingPriceProvider(exchange, market, broker, "1h", datetime(2020, 1, 1, tzinfo=timezone.utc), datetime(2022, 5, 19, tzinfo=timezone.utc))
 
 strategy: Strategy = GridStrategy(market, wallet, broker, price_provider)
-strategy.upper_price = 50000
-strategy.lower_price = 20000
-strategy.price_step = 100
 strategy.initialise()
 
 broker.addListener(strategy)

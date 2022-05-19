@@ -6,16 +6,19 @@ import time
 
 import pandas
 from Market import Market
+from Order import Order
 from PriceProvider import PriceProvider
+from SimulatedBroker import SimulatedBroker
 
 class BacktestingPriceProvider(PriceProvider):
 
-    def __init__(self, exchange, market: Market, timeframe: string, start_date: datetime, end_date: datetime) -> None:
+    def __init__(self, exchange, market: Market, broker: SimulatedBroker, timeframe: string, start_date: datetime, end_date: datetime) -> None:
         super().__init__(exchange)
         self.timeframe=timeframe
         self.start_date = start_date
         self.end_date = end_date
         self.market = market
+        self.broker = broker
 
         # initialise current price
         self.current_price = 0
@@ -77,17 +80,44 @@ class BacktestingPriceProvider(PriceProvider):
         for index, row in candles_df.iterrows():
             if row["close"] > row["open"]:
                 # green candle, price plays open->low->high->close
-                self.updatePriceListenersWithBacktestingData(row["open"])
-                self.updatePriceListenersWithBacktestingData(row["low"])
-                self.updatePriceListenersWithBacktestingData(row["high"])
-                self.updatePriceListenersWithBacktestingData(row["close"])
+                self.simulate_price_movement(row["open"], row["low"])
+                self.simulate_price_movement(row["low"], row["high"])
+                self.simulate_price_movement(row["high"], row["close"])
             else:
                 # red candle, price plays open->high->low->close
-                self.updatePriceListenersWithBacktestingData(row["open"])
-                self.updatePriceListenersWithBacktestingData(row["high"])
-                self.updatePriceListenersWithBacktestingData(row["low"])
-                self.updatePriceListenersWithBacktestingData(row["close"])
+                self.simulate_price_movement(row["open"], row["high"])
+                self.simulate_price_movement(row["high"], row["low"])
+                self.simulate_price_movement(row["low"], row["close"])
             self.current_price = row["close"]
 
         self.historic_candles = candles_df
         logger.info("Backtesting complete")
+
+    def simulate_price_movement(self, a: float, b: float) -> None:
+        """Simulates price moving from a to b"""
+        # 1. get orders that will be filled if price moves from a to b
+        # 2. simulate a price event at the limit price of each order, in correct order
+        # market orders can be ignored, they will be filled at price a anyway
+
+        logger.debug(str.format("Simulate price point {}", a))
+        self.updatePriceListenersWithBacktestingData(a)
+
+        last_simulated_price = a
+        orders = self.broker.get_open_orders(last_simulated_price, b)
+        while len(orders) > 0:
+            if a > b:
+                # sort orders by limit price descending
+                orders.sort(key=lambda o: o.limit_price, reverse=True)
+            else:
+                # sort orders by limit price ascending
+                orders.sort(key=lambda o: o.limit_price)
+            
+            # simulate a price change on the limit price of the next order that would be filled
+            for order in orders:
+                if order.type == Order.Type.LIMIT:
+                    self.updatePriceListenersWithBacktestingData(order.limit_price)
+                    logger.debug(str.format("Simulate additonal price point {}", order.limit_price))
+                    last_simulated_price = order.limit_price
+                    break
+            orders = self.broker.get_open_orders(last_simulated_price, b)
+        

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from distutils.log import WARN
 import logging
 from typing import overload
 from Market import Market
@@ -17,6 +18,7 @@ class SimulatedBroker(Broker, PriceListener):
         self.wallet = wallet
         self.open_orders = []
         self.filled_orders = []
+        self.logger = logging.Logger("SimulatedBroker", level = WARN)
 
     def createOrder(self, market: Market, qty: float, side: Order.Side = Order.Side.BUY, type: Order.Type = Order.Type.MARKET, limit_price: float = 0) -> Order:
         result = Order(market, qty, side, type, limit_price)
@@ -27,16 +29,16 @@ class SimulatedBroker(Broker, PriceListener):
 
         self.open_orders.append(result)
 
-        logging.info("Order created: " + str(result))
+        self.logger.info("Order created: " + str(result))
 
         return result
 
     def cancelOrder(self, order_id: int):
         if order_id in self.open_orders:
             self.open_orders.remove(order_id)
-            logging.info("Order canceled: " + str(order_id))
+            self.logger.info("Order canceled: " + str(order_id))
         else:
-            logging.warning("cancelOrder: Order not found: " + str(order_id))
+            self.logger.warning("cancelOrder: Order not found: " + str(order_id))
     
     def _generate_complete_fill(self, order: Order, price: float) -> OrderFill:
         fill = OrderFill(order.qty, price, 0, datetime.now(timezone.utc))
@@ -64,9 +66,9 @@ class SimulatedBroker(Broker, PriceListener):
         order.fills.append(fill)
         if order.is_filled():
             self.filled_orders.append(order)
-            logging.info("Order filled: " + str(order))
+            self.logger.info("Order filled: " + str(order))
         
-        logging.info(str(self.wallet))
+        self.logger.info(str(self.wallet))
 
     def onPriceChanged(self, pair: Market, price: float):
         remaining_orders = []
@@ -81,7 +83,7 @@ class SimulatedBroker(Broker, PriceListener):
                     # check limit orders
                     if order.side == Order.Side.BUY:
                         # buy order is executed when the price is lower than the limit price
-                        if price < order.limit_price:
+                        if price <= order.limit_price:
                             fill = self._generate_complete_fill(order, price)
                             self._add_fill(order, fill)
                             notifications.append([order, fill])
@@ -89,7 +91,7 @@ class SimulatedBroker(Broker, PriceListener):
                             remaining_orders.append(order)
                     else:
                         # sell order is executed when price is greater than limit price
-                        if price > order.limit_price:
+                        if price >= order.limit_price:
                             fill = self._generate_complete_fill(order, price)
                             self._add_fill(order, fill)
                             notifications.append([order, fill])
@@ -104,12 +106,41 @@ class SimulatedBroker(Broker, PriceListener):
         for n in notifications:
             self.notifyOrderFilled(n[0], n[1])
 
+    def get_open_orders(self, a: float, b: float) -> list[Order]:
+        """Retuns all orders that would be filled when price moves from a to b"""
+        result: list[Order] = []
+        min_price = min(a, b)
+        max_price = max(a, b)
+        for order in self.open_orders:
+
+            # market order is always filled
+            if order.type == Order.Type.MARKET:
+                result.append(order)
+            
+            # check limit price for limit orders
+            elif order.type == Order.Type.LIMIT:
+                if order.side == Order.Side.BUY:
+                    # buy orders are executed when
+                    # - the limit price is greater than b for red candles
+                    # - the limit price is greater than a for green candles
+                    if order.limit_price >= min_price:
+                        result.append(order)
+                if order.side == Order.Side.SELL:
+                    # sell orders are executed when
+                    # - the limit price is less than a for red candles
+                    # - the limit price is less than b for green candles
+                    if order.limit_price <= max_price:
+                        result.append(order)
+            else:
+                pass
+        return result
+
     def cancel_all_orders(self, market: Market):
         remaining_orders = []
         for order in self.open_orders:
             if order.market == market:
                 # cancel this order
-                logging.info("Order canceled: " + str(order))
+                self.logger.info("Order canceled: " + str(order))
             else:
                 remaining_orders.append(order)
         self.open_orders = remaining_orders

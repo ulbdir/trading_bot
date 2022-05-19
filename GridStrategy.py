@@ -44,19 +44,28 @@ class GridStrategy(Strategy, PriceListener):
             self.broker.createOrder(self.pair, base_qty)
         
         # create buy order below
-        buy_price = self.grid.price_below(market_price)
-        buy_qty = size_per_grid / buy_price
-        self.broker.createOrder(self.pair, buy_qty, Order.Side.BUY, Order.Type.LIMIT, buy_price)
+        if market_price > self.grid.lower_price:
+            buy_price = self.grid.price_below(market_price)
+            buy_qty = size_per_grid / buy_price
+            self.broker.createOrder(self.pair, buy_qty, Order.Side.BUY, Order.Type.LIMIT, buy_price)
 
         # create sell order above
-        sell_price = self.grid.price_above(market_price)
-        # sell the qty that was bought one level below
-        sell_qty = buy_qty
-        self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
+        if market_price < self.grid.upper_price:
+            sell_price = self.grid.price_above(market_price)
+            # sell the qty that was bought one level below
+            buy_price = market_price
+            if market_price > self.grid.lower_price:
+                buy_price = self.grid.price_below(market_price)
+            else:
+                buy_price = self.grid.lower_price
+            
+            sell_qty = size_per_grid / buy_price
+
+            self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
 
 
     def initialise(self) -> None:
-        self.grid = Grid(50000, 10000, 100)
+        self.grid = Grid(70000, 5000, 100)
         self.initialiseOrders()
 
     def onOrderFilled(self, order: Order, fill: OrderFill):
