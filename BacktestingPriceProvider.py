@@ -41,7 +41,7 @@ class BacktestingPriceProvider(PriceProvider):
         logger.info("Backtesting started")
         logger.info("Downloading candles")
 
-        candles_df = pandas.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
+        candles_df = pandas.DataFrame(columns=["date", "open", "high", "low", "close", "volume"]).set_index("date")
 
         while current_time < stop_time:
             logger.info("Backtesting from " + self.start_date.strftime("%Y %m %d") + " to " + self.end_date.strftime("%Y %m %d") + ", progress " + datetime.utcfromtimestamp(current_time / 1000).strftime("%Y %m %d"))
@@ -57,22 +57,19 @@ class BacktestingPriceProvider(PriceProvider):
             df = df.astype(dtype={'open': 'float', 'high': 'float', 'low': 'float', 'close': 'float',
                                     'volume': 'float'})
 
-            candles_df = pandas.concat([candles_df, df], ignore_index=True)
+            df.set_index("date", inplace=True)
+
+            candles_df = pandas.concat([candles_df, df], ignore_index=False)
             
-            # group by date and aggregate results to eliminate duplicate candles
-            candles_df = candles_df.groupby(by='date', as_index=False, sort=True).agg({
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last',
-                'volume': 'max',
-            })
-            
-            last_candle_date = df["date"].iloc[-1]
+            # remove duplicate candles
+            candles_df = candles_df[~candles_df.index.duplicated(keep='last')]
+
+            # update last downloaded candle timestamp
+            last_candle_date = df.index[-1]
             current_time = int(last_candle_date.timestamp() * 1000)
 
         # filter out candles after end_date
-        candles_df = candles_df[(candles_df["date"] <= self.end_date)]
+        candles_df = candles_df[(candles_df.index <= self.end_date)]
 
         logger.info(str.format("Downloaded {} candles", len(candles_df.index)))
 
