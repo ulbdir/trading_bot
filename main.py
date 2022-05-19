@@ -26,7 +26,7 @@ broker: SimulatedBroker = SimulatedBroker(wallet)
 
 exchange = ccxt.ftx()
 #price_provider = PriceProvider(exchange)
-price_provider = BacktestingPriceProvider(exchange, market, "1h", datetime(2022, 1, 1, tzinfo=timezone.utc), datetime(2022, 4, 30, tzinfo=timezone.utc))
+price_provider = BacktestingPriceProvider(exchange, market, "1m", datetime(2022, 1, 1, tzinfo=timezone.utc), datetime(2022, 5, 18, tzinfo=timezone.utc))
 
 strategy: Strategy = GridStrategy(market, wallet, broker, price_provider)
 strategy.upper_price = 50000
@@ -44,6 +44,14 @@ price_provider.run()
 logging.info(str.format("Wallet value: {} {}", wallet.getBalance(market.quote_currency) + wallet.getBalance(market.base_currency) * price_provider.getCurrentPrice(market), market.quote_currency))
 
 # open a window to visualise the simulation result
-# TODO add grid lines and trades to candlestick chart, add portfolio/time value as additional graph
+# TODO add trades to candlestick chart, add portfolio/time value as additional graph
+finplot.create_plot(market.get_market())
 finplot.candlestick_ochl(price_provider.historic_candles[['open', 'close', 'high', 'low']])
+
+# add grid lines to view
+first_date = price_provider.historic_candles.index[0]
+last_date = price_provider.historic_candles.index[-1]
+for gridline in strategy.grid.grid_lines:
+    line = finplot.add_line((first_date, gridline), (last_date, gridline), color='#080808', interactive=False)
+
 finplot.show()
