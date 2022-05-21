@@ -31,11 +31,11 @@ class BacktestingPriceProvider(PriceProvider):
     def getCurrentPrice(self, pair: Market) -> float:
         return float(self.current_price)
 
-    def updatePriceListenersWithBacktestingData(self, price):
+    def updatePriceListenersWithBacktestingData(self, price, timestamp):
         for pair, l in self.listeners.items():
             if pair == self.market:
                 for cl in l:
-                    cl.onPriceChanged(self.market, price)
+                    cl.onPriceChanged(self.market, price, timestamp)
 
     def run(self):
         current_time = self.start_date.timestamp()*1000
@@ -49,7 +49,7 @@ class BacktestingPriceProvider(PriceProvider):
         while current_time < stop_time:
             logger.info("Backtesting from " + self.start_date.strftime("%Y %m %d") + " to " + self.end_date.strftime("%Y %m %d") + ", progress " + datetime.utcfromtimestamp(current_time / 1000).strftime("%Y %m %d"))
             candles = self.exchange.fetch_ohlcv (self.market.get_market(), self.timeframe, since=current_time)
-            
+
             # convert lists to dataframe
             df = pandas.DataFrame(candles, columns=["date", "open", "high", "low", "close", "volume"])
 
@@ -80,27 +80,27 @@ class BacktestingPriceProvider(PriceProvider):
         for index, row in candles_df.iterrows():
             if row["close"] > row["open"]:
                 # green candle, price plays open->low->high->close
-                self.simulate_price_movement(row["open"], row["low"])
-                self.simulate_price_movement(row["low"], row["high"])
-                self.simulate_price_movement(row["high"], row["close"])
+                self.simulate_price_movement(row["open"], row["low"], index)
+                self.simulate_price_movement(row["low"], row["high"], index)
+                self.simulate_price_movement(row["high"], row["close"], index)
             else:
                 # red candle, price plays open->high->low->close
-                self.simulate_price_movement(row["open"], row["high"])
-                self.simulate_price_movement(row["high"], row["low"])
-                self.simulate_price_movement(row["low"], row["close"])
+                self.simulate_price_movement(row["open"], row["high"], index)
+                self.simulate_price_movement(row["high"], row["low"], index)
+                self.simulate_price_movement(row["low"], row["close"], index)
             self.current_price = row["close"]
 
         self.historic_candles = candles_df
         logger.info("Backtesting complete")
 
-    def simulate_price_movement(self, a: float, b: float) -> None:
+    def simulate_price_movement(self, a: float, b: float, timestamp) -> None:
         """Simulates price moving from a to b"""
         # 1. get orders that will be filled if price moves from a to b
         # 2. simulate a price event at the limit price of each order, in correct order
-        # market orders can be ignored, they will be filled at price a anyway
+        #    market orders can be ignored, they will be filled at the next price event anyway
 
         logger.debug(str.format("Simulate price point {}", a))
-        self.updatePriceListenersWithBacktestingData(a)
+        self.updatePriceListenersWithBacktestingData(a, timestamp)
 
         last_simulated_price = a
         orders = self.broker.get_open_orders(last_simulated_price, b)
@@ -114,8 +114,8 @@ class BacktestingPriceProvider(PriceProvider):
             
             # simulate a price change on the limit price of the next order that would be filled
             for order in orders:
-                if order.type == Order.Type.LIMIT:
-                    self.updatePriceListenersWithBacktestingData(order.limit_price)
+                if order.type == Order.Type.LIMIT and order.limit_price > 0:
+                    self.updatePriceListenersWithBacktestingData(order.limit_price, timestamp)
                     logger.debug(str.format("Simulate additonal price point {}", order.limit_price))
                     last_simulated_price = order.limit_price
                     break

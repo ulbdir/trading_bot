@@ -1,7 +1,7 @@
 import logging
 import math
 import string
-from Broker import Broker
+from Broker import Broker, BrokerListener
 from Grid import Grid
 from Market import Market
 from Order import Order
@@ -11,7 +11,7 @@ from SimulatedBroker import SimulatedBroker
 from Strategy import Strategy
 from Wallet import Wallet
 
-class GridStrategy(Strategy, PriceListener):
+class GridStrategy(Strategy, BrokerListener):
 
     def __init__(self, pair: Market, wallet: Wallet, broker: Broker, price_provider: PriceProvider) -> None:
         super().__init__()
@@ -65,7 +65,7 @@ class GridStrategy(Strategy, PriceListener):
 
 
     def initialise(self) -> None:
-        self.grid = Grid(70000, 5000, 100)
+        self.grid = Grid(35000, 25000, 500)
         self.initialiseOrders()
 
     def onOrderFilled(self, order: Order, fill: OrderFill):
@@ -96,8 +96,4 @@ class GridStrategy(Strategy, PriceListener):
                     self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
         else:
             logging.info("Order ignored: " + str(order))
-
-    def onPriceChanged(self, pair: string, price: float):
-        #print(pair, price)
-        pass
 

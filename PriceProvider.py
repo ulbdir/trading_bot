@@ -5,7 +5,7 @@ from Market import Market
 class PriceListener(ABC):
     
     @abstractmethod
-    def onPriceChanged(self, pair: Market, price: float):
+    def onPriceChanged(self, pair: Market, price: float, timestamp = None):
         pass
 
 class PriceProvider:
