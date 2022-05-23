@@ -16,5 +16,8 @@ class Wallet:
     def setBalance(self, token: string, amount: float) -> None:
         self.tokens[token] = amount
     
+    def get_tokens(self) -> list[string]:
+        return list(self.tokens)
+
     def __str__(self) -> str:
         return "Wallet " + str(self.tokens)

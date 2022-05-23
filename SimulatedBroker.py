@@ -15,13 +15,13 @@ class SimulatedBroker(Broker, PriceListener):
 
     def __init__(self, wallet: Wallet) -> None:
         super().__init__()
-        self.wallet = wallet
-        self.open_orders = []
-        self.filled_orders = []
-        self.logger = logging.Logger("SimulatedBroker", level = WARN)
+        self.wallet: Wallet = wallet
+        self.open_orders: list[Order] = []
+        self.filled_orders: list[Order] = []
+        self.logger = logging.Logger("SimulatedBroker", level = logging.WARN)
 
-    def createOrder(self, market: Market, qty: float, side: Order.Side = Order.Side.BUY, type: Order.Type = Order.Type.MARKET, limit_price: float = 0, timestamp = None) -> Order:
-        result = Order(market, qty, side, type, limit_price, timestamp)
+    def createOrder(self, market: Market, qty: float, side: Order.Side = Order.Side.BUY, type: Order.Type = Order.Type.MARKET, limit_price: float = 0, timestamp = None, closes: Order = None) -> Order:
+        result = Order(market, qty, side, type, limit_price, timestamp, closes)
         
         # assign unique id
         result.id = SimulatedBroker.next_id

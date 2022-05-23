@@ -32,6 +32,7 @@ class BacktestingPriceProvider(PriceProvider):
         return float(self.current_price)
 
     def updatePriceListenersWithBacktestingData(self, price, timestamp):
+        self.current_price = price
         for pair, l in self.listeners.items():
             if pair == self.market:
                 for cl in l:
@@ -88,7 +89,6 @@ class BacktestingPriceProvider(PriceProvider):
                 self.simulate_price_movement(row["open"], row["high"], index)
                 self.simulate_price_movement(row["high"], row["low"], index)
                 self.simulate_price_movement(row["low"], row["close"], index)
-            self.current_price = row["close"]
 
         self.historic_candles = candles_df
         logger.info("Backtesting complete")

@@ -47,7 +47,7 @@ class GridStrategy(Strategy, BrokerListener):
         if market_price > self.grid.lower_price:
             buy_price = self.grid.price_below(market_price)
             buy_qty = size_per_grid / buy_price
-            self.broker.createOrder(self.pair, buy_qty, Order.Side.BUY, Order.Type.LIMIT, buy_price)
+            buy_order = self.broker.createOrder(self.pair, buy_qty, Order.Side.BUY, Order.Type.LIMIT, buy_price)
 
         # create sell order above
         if market_price < self.grid.upper_price:
@@ -61,11 +61,11 @@ class GridStrategy(Strategy, BrokerListener):
             
             sell_qty = size_per_grid / buy_price
 
-            self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
+            self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price, closes=buy_order)
 
 
-    def initialise(self) -> None:
-        self.grid = Grid(35000, 25000, 500)
+    def initialise(self, upper_price: float, lower_price: float, price_step: float) -> None:
+        self.grid = Grid(upper_price, lower_price, price_step)
         self.initialiseOrders()
 
     def onOrderFilled(self, order: Order, fill: OrderFill):
@@ -93,7 +93,12 @@ class GridStrategy(Strategy, BrokerListener):
                     sell_price = self.grid.grid_lines[sell_idx]
                     # sell the qty that was bought on current level
                     sell_qty = size_per_grid / self.grid.grid_lines[idx]
-                    self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price)
+                   
+                    # if the fill closed a buy order, assign the sell order one level above to it for profit calculation purposes
+                    closes_order = None
+                    if order.is_filled() and order.side == Order.Side.BUY:
+                        closes_order = order
+                    self.broker.createOrder(self.pair, sell_qty, Order.Side.SELL, Order.Type.LIMIT, sell_price, closes=closes_order)
         else:
             logging.info("Order ignored: " + str(order))
 
